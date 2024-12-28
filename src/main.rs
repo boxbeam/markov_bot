@@ -28,7 +28,7 @@ async fn send_message(ctx: &Context, channel: ChannelId, msg: String) {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.guild_id.is_none() || msg.author.bot {
+        if msg.guild_id.is_none() || msg.author.bot || msg.content.is_empty() {
             return;
         }
 
