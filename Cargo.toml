@@ -1,0 +1,10 @@
+[package]
+name = "markov"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.83"
+rand = "0.8.5"
+serenity = "0.12.4"
+tokio = { version = "1.42.0", features = ["full"] }
