@@ -38,7 +38,7 @@ impl<const N: usize> Token<N> {
 pub struct MarkovChain<const LOOKBEHIND: usize> {
     map: HashMap<Token<LOOKBEHIND>, MarkovEntry>,
     entries: VecDeque<String>,
-    pub cache_size: usize,
+    pub cache_size: Option<usize>,
 }
 
 impl<const N: usize> Default for MarkovChain<N> {
@@ -46,40 +46,41 @@ impl<const N: usize> Default for MarkovChain<N> {
         MarkovChain {
             map: Default::default(),
             entries: Default::default(),
-            cache_size: 1000,
+            cache_size: Some(1000),
         }
     }
 }
 
+fn into_tokens<const N: usize>(input: &str) -> impl Iterator<Item = Token<N>> {
+    let mut symbols = vec![Symbol::Start];
+    symbols.extend(input.chars().map(Symbol::Char));
+    symbols.push(Symbol::End);
+
+    (0..symbols.len()).map(move |i| {
+        let start = i.saturating_sub(N);
+        Token::new(&symbols[start..i])
+    })
+}
+
 impl<const N: usize> MarkovChain<N> {
     pub fn digest(&mut self, input: &str) {
-        let mut symbols = vec![Symbol::Start];
-        symbols.extend(input.chars().map(Symbol::Char));
-        symbols.push(Symbol::End);
-
-        for i in 1..symbols.len() {
-            let start = i.saturating_sub(N);
-            let token: Token<N> = Token::new(&symbols[start..i]);
-            let symbol = symbols[i];
+        for token in into_tokens(input) {
+            let symbol = token.symbols[0];
             self.map.entry(token).or_default().insert(symbol);
         }
 
-        self.entries.push_back(input.to_string());
-        if self.entries.len() > self.cache_size {
-            let entry = self.entries.pop_front().unwrap();
-            self.undigest(&entry);
+        if let Some(cache_size) = self.cache_size {
+            self.entries.push_back(input.to_string());
+            if self.entries.len() > cache_size {
+                let entry = self.entries.pop_front().unwrap();
+                self.undigest(&entry);
+            }
         }
     }
 
     fn undigest(&mut self, input: &str) {
-        let mut symbols = vec![Symbol::Start];
-        symbols.extend(input.chars().map(Symbol::Char));
-        symbols.push(Symbol::End);
-
-        for i in 1..symbols.len() {
-            let start = i.saturating_sub(N);
-            let token: Token<N> = Token::new(&symbols[start..i]);
-            let symbol = symbols[i];
+        for token in into_tokens(input) {
+            let symbol = token.symbols[0];
             self.map.entry(token).or_default().remove(symbol);
         }
     }
