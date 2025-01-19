@@ -51,22 +51,21 @@ impl<const N: usize> Default for MarkovChain<N> {
     }
 }
 
-fn into_tokens<const N: usize>(input: &str) -> impl Iterator<Item = Token<N>> {
+fn into_tokens<const N: usize>(input: &str) -> impl Iterator<Item = (Token<N>, Symbol)> {
     let mut symbols = vec![Symbol::Start];
     symbols.extend(input.chars().map(Symbol::Char));
     symbols.push(Symbol::End);
 
     (0..symbols.len()).map(move |i| {
         let start = i.saturating_sub(N);
-        Token::new(&symbols[start..i])
+        (Token::new(&symbols[start..i]), symbols[i])
     })
 }
 
 impl<const N: usize> MarkovChain<N> {
     pub fn digest(&mut self, input: &str) {
-        for token in into_tokens(input) {
-            let symbol = token.symbols[0];
-            self.map.entry(token).or_default().insert(symbol);
+        for (token, next_symbol) in into_tokens(input) {
+            self.map.entry(token).or_default().insert(next_symbol);
         }
 
         if let Some(cache_size) = self.cache_size {
@@ -79,9 +78,8 @@ impl<const N: usize> MarkovChain<N> {
     }
 
     fn undigest(&mut self, input: &str) {
-        for token in into_tokens(input) {
-            let symbol = token.symbols[0];
-            self.map.entry(token).or_default().remove(symbol);
+        for (token, next_symbol) in into_tokens(input) {
+            self.map.entry(token).or_default().remove(next_symbol);
         }
     }
 
